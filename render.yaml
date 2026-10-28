@@ -1,0 +1,34 @@
+# הגדרות פריסה ל-Render (Blueprint)
+# https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: seminar-schedule-backend
+    runtime: node
+    plan: free
+    # npm ci --include=dev: כדי ש-TypeScript וה-Prisma CLI יותקנו לצורך הבנייה
+    # npm run build: מריץ prisma generate ואז מהדר את TypeScript
+    buildCommand: npm ci --include=dev && npm run build
+    # מריץ Prisma Migrations, יוצר נתוני בסיס (כיתות ומקצועות, ומזכירה אם הוגדרה), ואז מפעיל את השרת
+    startCommand: npm run start:render
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: NODE_ENV
+        value: production
+      # אין לרשום את הערך כאן. מזינים אותו בלוח הבקרה של Render
+      - key: DATABASE_URL
+        sync: false
+      # Render מייצר ערך אקראי וחזק לבד
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 8h
+      # כתובת ה-React שלך (למשל https://my-app.vercel.app). אפשר כמה, מופרדות בפסיק
+      - key: CORS_ORIGINS
+        sync: false
+      # יצירת חשבון המזכירה הראשון. מזינים בלוח הבקרה של Render
+      - key: SEED_ADMIN_EMAIL
+        sync: false
+      - key: SEED_ADMIN_PASSWORD
+        sync: false

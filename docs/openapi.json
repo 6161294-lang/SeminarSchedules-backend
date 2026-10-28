@@ -1,0 +1,4596 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "API - מערכת סנכרון לוח זמנים בסמינר",
+    "version": "1.0.0",
+    "description": "ה-API של מערכת לוח הזמנים. שלוש הרשאות: מזכירה (ADMIN), מורה (TEACHER), תלמידה (STUDENT).\n\n**איך מתחברים ב-Swagger:**\n1. פותחים `POST /api/auth/login` ולוחצים Try it out ואז Execute.\n2. מעתיקים את הערך של `sessionKey` מהתשובה.\n3. לוחצים על הכפתור **Authorize** למעלה ומדביקים את המפתח (בלי המילה Bearer).\n4. עכשיו אפשר להפעיל Endpoints מוגנים. בלי מפתח מתקבל 401, ובלי הרשאה מתאימה 403.\n\nה-JWT נשמר בשרת בלבד. הלקוח מקבל ושולח רק מפתח אקראי (`sessionKey`)."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "השרת הנוכחי"
+    }
+  ],
+  "tags": [
+    {
+      "name": "מערכת"
+    },
+    {
+      "name": "אימות"
+    },
+    {
+      "name": "משתמשים"
+    },
+    {
+      "name": "כיתות ומקצועות"
+    },
+    {
+      "name": "לוח זמנים"
+    },
+    {
+      "name": "הערות אישיות"
+    },
+    {
+      "name": "שיעורי בית"
+    },
+    {
+      "name": "הגשות"
+    },
+    {
+      "name": "התראות והודעות"
+    },
+    {
+      "name": "שיחה מורה-מזכירה"
+    }
+  ],
+  "paths": {
+    "/api/health": {
+      "get": {
+        "tags": [
+          "מערכת"
+        ],
+        "summary": "בדיקת תקינות השרת והמסד",
+        "description": "**הרשאות:** ציבורי (בלי התחברות)",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "השרת והמסד פעילים",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "מסד הנתונים לא זמין"
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "אימות"
+        ],
+        "summary": "התחברות",
+        "description": "מחזיר `sessionKey`. את המפתח שולחים בכל בקשה ככותרת `Authorization: Bearer <sessionKey>`. ב-Swagger: לוחצים Authorize ומדביקים את המפתח.\n\n**הרשאות:** ציבורי (בלי התחברות)",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              },
+              "example": {
+                "email": "secretary@example.com",
+                "password": "Password123!"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "התחברות הצליחה",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "אימות"
+        ],
+        "summary": "התנתקות (מבטלת את המפתח בשרת)",
+        "description": "**הרשאות:** דורש התחברות. כל התפקידים",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "התנתקת בהצלחה"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": [
+          "אימות"
+        ],
+        "summary": "פרטי המשתמשת המחוברת",
+        "description": "**הרשאות:** דורש התחברות. כל התפקידים",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "המשתמשת המחוברת",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          }
+        }
+      }
+    },
+    "/api/auth/change-password": {
+      "post": {
+        "tags": [
+          "אימות"
+        ],
+        "summary": "שינוי סיסמה (מנתק התחברויות אחרות)",
+        "description": "**הרשאות:** דורש התחברות. כל התפקידים",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              },
+              "example": {
+                "currentPassword": "OldPassword1!",
+                "newPassword": "NewPassword2!"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "הסיסמה שונתה"
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          }
+        }
+      }
+    },
+    "/api/users": {
+      "get": {
+        "tags": [
+          "משתמשים"
+        ],
+        "summary": "רשימת משתמשים עם סינון וחיפוש",
+        "description": "**הרשאות:** דורש התחברות. הרשאה: מזכירה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "description": "סינון לפי תפקיד",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ADMIN",
+                "TEACHER",
+                "STUDENT"
+              ]
+            }
+          },
+          {
+            "name": "classId",
+            "in": "query",
+            "required": false,
+            "description": "סינון תלמידות לפי כיתה",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "isActive",
+            "in": "query",
+            "required": false,
+            "description": "פעילות או מושבתות",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "חיפוש לפי שם או אימייל",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "מספר עמוד",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "כמות בעמוד",
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "maximum": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "רשימת משתמשים",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "משתמשים"
+        ],
+        "summary": "יצירת משתמשת",
+        "description": "**הרשאות:** דורש התחברות. הרשאה: מזכירה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserRequest"
+              },
+              "example": {
+                "fullName": "מרים לוי",
+                "email": "miriam@example.com",
+                "password": "Password123!",
+                "role": "STUDENT",
+                "classId": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "המשתמשת נוצרה",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "409": {
+            "$ref": "#/components/responses/E409"
+          }
+        }
+      }
+    },
+    "/api/users/{id}": {
+      "get": {
+        "tags": [
+          "משתמשים"
+        ],
+        "summary": "פרטי משתמשת",
+        "description": "**הרשאות:** דורש התחברות. הרשאה: מזכירה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "מזהה (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "המשתמשת",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "משתמשים"
+        ],
+        "summary": "עדכון, השבתה או איפוס סיסמה",
+        "description": "השבתה או איפוס סיסמה מנתקים את כל ההתחברויות של המשתמשת.\n\n**הרשאות:** דורש התחברות. הרשאה: מזכירה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "מזהה (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRequest"
+              },
+              "example": {
+                "isActive": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "המשתמשת אחרי העדכון",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          },
+          "409": {
+            "$ref": "#/components/responses/E409"
+          }
+        }
+      }
+    },
+    "/api/classes": {
+      "get": {
+        "tags": [
+          "כיתות ומקצועות"
+        ],
+        "summary": "רשימת כיתות",
+        "description": "**הרשאות:** דורש התחברות. כל התפקידים",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "כיתות",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Class"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "כיתות ומקצועות"
+        ],
+        "summary": "יצירת כיתה",
+        "description": "**הרשאות:** דורש התחברות. הרשאה: מזכירה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassRequest"
+              },
+              "example": {
+                "name": "ה1",
+                "grade": "HEH"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "הכיתה נוצרה",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Class"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "409": {
+            "$ref": "#/components/responses/E409"
+          }
+        }
+      }
+    },
+    "/api/classes/{id}": {
+      "patch": {
+        "tags": [
+          "כיתות ומקצועות"
+        ],
+        "summary": "עדכון כיתה",
+        "description": "**הרשאות:** דורש התחברות. הרשאה: מזכירה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "מזהה (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassRequest"
+              },
+              "example": {
+                "name": "ה1"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "הכיתה אחרי העדכון",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Class"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          },
+          "409": {
+            "$ref": "#/components/responses/E409"
+          }
+        }
+      }
+    },
+    "/api/subjects": {
+      "get": {
+        "tags": [
+          "כיתות ומקצועות"
+        ],
+        "summary": "רשימת מקצועות",
+        "description": "**הרשאות:** דורש התחברות. כל התפקידים",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "מקצועות",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Subject"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "כיתות ומקצועות"
+        ],
+        "summary": "יצירת מקצוע",
+        "description": "**הרשאות:** דורש התחברות. הרשאה: מזכירה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubjectRequest"
+              },
+              "example": {
+                "name": "פיתוח Web"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "המקצוע נוצר",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Subject"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "409": {
+            "$ref": "#/components/responses/E409"
+          }
+        }
+      }
+    },
+    "/api/subjects/{id}": {
+      "patch": {
+        "tags": [
+          "כיתות ומקצועות"
+        ],
+        "summary": "עדכון מקצוע",
+        "description": "**הרשאות:** דורש התחברות. הרשאה: מזכירה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "מזהה (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubjectRequest"
+              },
+              "example": {
+                "name": "פיתוח Web מתקדם"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "המקצוע אחרי העדכון",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Subject"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          },
+          "409": {
+            "$ref": "#/components/responses/E409"
+          }
+        }
+      }
+    },
+    "/api/lessons": {
+      "get": {
+        "tags": [
+          "לוח זמנים"
+        ],
+        "summary": "רשימת שיעורים",
+        "description": "מזכירה רואה את כל השיעורים (כולל מבוטלים) ויכולה לסנן. מורה רואה את שלה, ותלמידה את אלו של הכיתה שלה. **שיעורים מבוטלים מוסתרים ממורות ותלמידות.**\n\n**הרשאות:** דורש התחברות. כל התפקידים",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "query",
+            "required": false,
+            "description": "סינון לפי כיתה (מזכירה בלבד)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "teacherId",
+            "in": "query",
+            "required": false,
+            "description": "סינון לפי מורה (מזכירה בלבד)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "dayOfWeek",
+            "in": "query",
+            "required": false,
+            "description": "יום בשבוע: 0 ראשון עד 5 שישי",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "סטטוס (מזכירה בלבד)",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ACTIVE",
+                "CANCELLED"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "שיעורים לפי יום ושעה",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Lesson"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "לוח זמנים"
+        ],
+        "summary": "יצירת שיעור",
+        "description": "שולחת התראה לתלמידות הכיתה ולמורה. מחזיר 409 אם יש התנגשות של מורה, כיתה או חדר.\n\n**הרשאות:** דורש התחברות. הרשאה: מזכירה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLessonRequest"
+              },
+              "example": {
+                "subjectId": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                "teacherId": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                "classId": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                "dayOfWeek": 0,
+                "startTime": "09:00",
+                "endTime": "10:30",
+                "room": "12"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "השיעור נוצר",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Lesson"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "409": {
+            "$ref": "#/components/responses/E409"
+          }
+        }
+      }
+    },
+    "/api/lessons/week": {
+      "get": {
+        "tags": [
+          "לוח זמנים"
+        ],
+        "summary": "מערכת שבועית",
+        "description": "מחזיר ימים 0-5 עם השיעורים של כל יום, בלי שיעורים מבוטלים.\n\n**הרשאות:** דורש התחברות. הרשאה: מורה, תלמידה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "המערכת השבועית",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeekSchedule"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/lessons/day/{dayOfWeek}": {
+      "get": {
+        "tags": [
+          "לוח זמנים"
+        ],
+        "summary": "מערכת יומית",
+        "description": "שיעורי היום בלבד: מקצוע, כיתה, שעות וחדר. שיעורים מבוטלים לא מוצגים.\n\n**הרשאות:** דורש התחברות. הרשאה: מורה, תלמידה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dayOfWeek",
+            "in": "path",
+            "required": true,
+            "description": "0 = ראשון ... 5 = שישי",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5,
+              "example": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "המערכת היומית",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DaySchedule"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/lessons/{id}": {
+      "get": {
+        "tags": [
+          "לוח זמנים"
+        ],
+        "summary": "פרטי שיעור",
+        "description": "**הרשאות:** דורש התחברות. כל התפקידים",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "מזהה (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "השיעור",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Lesson"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "לוח זמנים"
+        ],
+        "summary": "עדכון שיעור (העברה, ביטול או שינוי חדר)",
+        "description": "שינוי יום, שעה או חדר מעביר את השיעור (הוא יופיע רק ביום החדש). `status: CANCELLED` מבטל אותו והוא נעלם ממורות ותלמידות. כל שינוי שולח התראה לתלמידות הכיתה ולמורה.\n\n**הרשאות:** דורש התחברות. הרשאה: מזכירה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "מזהה (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLessonRequest"
+              },
+              "example": {
+                "dayOfWeek": 2,
+                "startTime": "11:00",
+                "endTime": "12:30",
+                "room": "14"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "השיעור אחרי העדכון",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Lesson"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          },
+          "409": {
+            "$ref": "#/components/responses/E409"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "לוח זמנים"
+        ],
+        "summary": "מחיקת שיעור",
+        "description": "**הרשאות:** דורש התחברות. הרשאה: מזכירה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "מזהה (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "השיעור נמחק"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        }
+      }
+    },
+    "/api/notes": {
+      "get": {
+        "tags": [
+          "הערות אישיות"
+        ],
+        "summary": "ההערות שלי (המחברת)",
+        "description": "כל משתמשת רואה רק הערות שכתבה בעצמה.\n\n**הרשאות:** דורש התחברות. הרשאה: מורה, תלמידה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "lessonId",
+            "in": "query",
+            "required": false,
+            "description": "סינון לפי שיעור",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "חיפוש בתוכן ההערה",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "הערות עם תווית השיעור",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Note"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "הערות אישיות"
+        ],
+        "summary": "הוספת הערה לשיעור",
+        "description": "מורה רשאית להוסיף רק לשיעורים שלה, ותלמידה רק לשיעורי הכיתה שלה.\n\n**הרשאות:** דורש התחברות. הרשאה: מורה, תלמידה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteRequest"
+              },
+              "example": {
+                "lessonId": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                "content": "לחזור על הרקורסיה לפני המבחן"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "ההערה נוצרה",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Note"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        }
+      }
+    },
+    "/api/notes/{id}": {
+      "patch": {
+        "tags": [
+          "הערות אישיות"
+        ],
+        "summary": "עריכת הערה (הכותבת בלבד)",
+        "description": "**הרשאות:** דורש התחברות. הרשאה: מורה, תלמידה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "מזהה (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteUpdateRequest"
+              },
+              "example": {
+                "content": "לחזור על רקורסיה ועל עצים"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ההערה אחרי העדכון",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Note"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "הערות אישיות"
+        ],
+        "summary": "מחיקת הערה (הכותבת בלבד)",
+        "description": "**הרשאות:** דורש התחברות. הרשאה: מורה, תלמידה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "מזהה (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "ההערה נמחקה"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        }
+      }
+    },
+    "/api/homeworks": {
+      "get": {
+        "tags": [
+          "שיעורי בית"
+        ],
+        "summary": "רשימת שיעורי בית",
+        "description": "מורה רואה את שיעורי הבית של השיעורים שלה (עם `submissionsCount`). תלמידה רואה את אלו של הכיתה שלה (עם `mySubmission`). המזכירה אינה רואה שיעורי בית.\n\n**הרשאות:** דורש התחברות. הרשאה: מורה, תלמידה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "lessonId",
+            "in": "query",
+            "required": false,
+            "description": "סינון לפי שיעור",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "upcoming",
+            "in": "query",
+            "required": false,
+            "description": "רק שיעורי בית שמועד ההגשה שלהם עוד לא עבר",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "שיעורי בית",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Homework"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "שיעורי בית"
+        ],
+        "summary": "יצירת שיעורי בית לשיעור של היום",
+        "description": "המורה יכולה להוסיף שיעורי בית רק לשיעור שלה שמתקיים **היום** (שעון ישראל). תאריך ההגשה חייב להיות אחרי היום. תלמידות הכיתה מקבלות התראה.\n\n**הרשאות:** דורש התחברות. הרשאה: מורה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateHomeworkRequest"
+              },
+              "example": {
+                "lessonId": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                "title": "תרגיל 3 - מערכים",
+                "description": "פתרי את שאלות 1-5 בעמוד 42 והעלי את הקבצים.",
+                "dueDate": "2026-10-30"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "שיעורי הבית נוצרו",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Homework"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        }
+      }
+    },
+    "/api/homeworks/{id}": {
+      "get": {
+        "tags": [
+          "שיעורי בית"
+        ],
+        "summary": "פרטי שיעורי בית",
+        "description": "**הרשאות:** דורש התחברות. הרשאה: מורה, תלמידה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "מזהה (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "שיעורי הבית",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Homework"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "שיעורי בית"
+        ],
+        "summary": "עריכת שיעורי בית (היוצרת בלבד)",
+        "description": "**הרשאות:** דורש התחברות. הרשאה: מורה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "מזהה (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHomeworkRequest"
+              },
+              "example": {
+                "dueDate": "2026-10-31"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "שיעורי הבית אחרי העדכון",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Homework"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "שיעורי בית"
+        ],
+        "summary": "מחיקת שיעורי בית (כולל ההגשות)",
+        "description": "**הרשאות:** דורש התחברות. הרשאה: מורה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "מזהה (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "נמחק"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        }
+      }
+    },
+    "/api/homeworks/{id}/submission": {
+      "post": {
+        "tags": [
+          "הגשות"
+        ],
+        "summary": "הגשת שיעורי בית (העלאת קבצים)",
+        "description": "בקשת `multipart/form-data` עם עד 5 קבצים בשדה `files` (עד 5MB כל אחד) והערה אופציונלית בשדה `comment`. הגשה חוזרת מחליפה את הקבצים. סוגי קבצים מותרים: pdf, zip, txt, md, תמונות, doc/docx, וקובצי קוד נפוצים. ההגשה אינה קשורה למחברת האישית.\n\n**הרשאות:** דורש התחברות. הרשאה: תלמידה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "מזהה שיעורי הבית",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmissionUploadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "הגשה קיימת עודכנה",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Submission"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "הגשה חדשה נוצרה",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Submission"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          },
+          "413": {
+            "$ref": "#/components/responses/E413"
+          }
+        }
+      }
+    },
+    "/api/submissions/mine": {
+      "get": {
+        "tags": [
+          "הגשות"
+        ],
+        "summary": "ההגשות שלי (כולל משוב)",
+        "description": "**הרשאות:** דורש התחברות. הרשאה: תלמידה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ההגשות של התלמידה",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Submission"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/submissions": {
+      "get": {
+        "tags": [
+          "הגשות"
+        ],
+        "summary": "הגשות התלמידות שלי עם סינון, חיפוש ומיון",
+        "description": "המורה רואה רק הגשות של שיעורים שהיא מלמדת. המזכירה אינה רואה הגשות כלל.\n\n**הרשאות:** דורש התחברות. הרשאה: מורה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "query",
+            "required": false,
+            "description": "סינון לפי כיתה",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "subjectId",
+            "in": "query",
+            "required": false,
+            "description": "סינון לפי מקצוע",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "homeworkId",
+            "in": "query",
+            "required": false,
+            "description": "סינון לפי שיעורי בית",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "חיפוש לפי שם תלמידה",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "required": false,
+            "description": "מיון לפי",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "submittedAt",
+                "studentName"
+              ],
+              "default": "submittedAt"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "description": "כיוון המיון",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "default": "desc"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "הגשות",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Submission"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/submissions/{id}": {
+      "get": {
+        "tags": [
+          "הגשות"
+        ],
+        "summary": "פרטי הגשה (התלמידה שהגישה או מורת השיעור)",
+        "description": "**הרשאות:** דורש התחברות. הרשאה: מורה, תלמידה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "מזהה (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ההגשה",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Submission"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        }
+      }
+    },
+    "/api/submission-files/{id}": {
+      "get": {
+        "tags": [
+          "הגשות"
+        ],
+        "summary": "הורדת קובץ הגשה (התלמידה שהגישה או מורת השיעור)",
+        "description": "**הרשאות:** דורש התחברות. הרשאה: מורה, תלמידה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "מזהה הקובץ",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "תוכן הקובץ",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        }
+      }
+    },
+    "/api/submissions/{id}/feedback": {
+      "put": {
+        "tags": [
+          "הגשות"
+        ],
+        "summary": "מתן או עדכון משוב על הגשה (מורת השיעור)",
+        "description": "רק התלמידה והמורה רואות את המשוב. התלמידה מקבלת התראה.\n\n**הרשאות:** דורש התחברות. הרשאה: מורה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "מזהה ההגשה",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackRequest"
+              },
+              "example": {
+                "content": "עבודה טובה, כדאי לשפר את שמות המשתנים."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "המשוב נשמר",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Feedback"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "הגשות"
+        ],
+        "summary": "קריאת המשוב על הגשה",
+        "description": "**הרשאות:** דורש התחברות. הרשאה: מורה, תלמידה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "מזהה ההגשה",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "המשוב",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Feedback"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        }
+      }
+    },
+    "/api/notifications": {
+      "get": {
+        "tags": [
+          "התראות והודעות"
+        ],
+        "summary": "ההתראות שלי",
+        "description": "**הרשאות:** דורש התחברות. כל התפקידים",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "unreadOnly",
+            "in": "query",
+            "required": false,
+            "description": "רק התראות שלא נקראו",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "כמות מקסימלית",
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "התראות וכמות שלא נקראו",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          }
+        }
+      }
+    },
+    "/api/notifications/read-all": {
+      "post": {
+        "tags": [
+          "התראות והודעות"
+        ],
+        "summary": "סימון כל ההתראות כנקראו",
+        "description": "**הרשאות:** דורש התחברות. כל התפקידים",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "כמה התראות עודכנו",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkAllReadResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          }
+        }
+      }
+    },
+    "/api/notifications/{id}/read": {
+      "patch": {
+        "tags": [
+          "התראות והודעות"
+        ],
+        "summary": "סימון התראה כנקראה",
+        "description": "**הרשאות:** דורש התחברות. כל התפקידים",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "מזהה (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ההתראה",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Notification"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        }
+      }
+    },
+    "/api/announcements": {
+      "post": {
+        "tags": [
+          "התראות והודעות"
+        ],
+        "summary": "שליחת הודעה לקבוצה (מזכירה)",
+        "description": "קהל: כל התלמידות, כל המורות, מחזור או כיתה. כל נמענת מקבלת התראה.\n\n**הרשאות:** דורש התחברות. הרשאה: מזכירה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAnnouncementRequest"
+              },
+              "example": {
+                "audience": "CLASS",
+                "classId": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                "title": "שינוי בלוח המבחנים",
+                "body": "המבחן ביום רביעי נדחה ליום חמישי."
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "ההודעה נשלחה",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Announcement"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "התראות והודעות"
+        ],
+        "summary": "הודעות: מזכירה רואה את ששלחה, אחרות את שקיבלו",
+        "description": "**הרשאות:** דורש התחברות. כל התפקידים",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "הודעות",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Announcement"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          }
+        }
+      }
+    },
+    "/api/teacher-messages/threads": {
+      "get": {
+        "tags": [
+          "שיחה מורה-מזכירה"
+        ],
+        "summary": "רשימת שיחות עם מורות (מזכירה)",
+        "description": "**הרשאות:** דורש התחברות. הרשאה: מזכירה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "שיחות עם הודעה אחרונה ומספר שלא נקראו",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ThreadSummary"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/teacher-messages": {
+      "get": {
+        "tags": [
+          "שיחה מורה-מזכירה"
+        ],
+        "summary": "הודעות בשיחה",
+        "description": "מורה רואה את השיחה שלה. מזכירה חייבת לשלוח `teacherId`. פתיחת השיחה מסמנת הודעות של הצד השני כנקראו.\n\n**הרשאות:** דורש התחברות. הרשאה: מורה, מזכירה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "teacherId",
+            "in": "query",
+            "required": false,
+            "description": "חובה למזכירה",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "הודעות מהישנה לחדשה",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ThreadMessage"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "שיחה מורה-מזכירה"
+        ],
+        "summary": "שליחת הודעה בשיחה",
+        "description": "מורה שולחת למזכירה (בלי teacherId). מזכירה חייבת לציין teacherId.\n\n**הרשאות:** דורש התחברות. הרשאה: מורה, מזכירה",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThreadMessageRequest"
+              },
+              "example": {
+                "body": "שלום, אפשר להחליף חדר ביום שלישי?"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "ההודעה נשלחה",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThreadMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "SessionKey",
+        "description": "המפתח (`sessionKey`) שהתקבל מ-/api/auth/login. השרת מחזיק את ה-JWT עצמו ומוצא אותו לפי המפתח."
+      }
+    },
+    "responses": {
+      "E400": {
+        "description": "בקשה שגויה או ולידציה נכשלה",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "error": {
+                "code": "VALIDATION_ERROR",
+                "message": "הנתונים שנשלחו אינם תקינים",
+                "details": [
+                  {
+                    "field": "email",
+                    "message": "אימייל לא תקין"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "E401": {
+        "description": "חסר מפתח התחברות, או שהוא לא תקין או פג תוקף",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "error": {
+                "code": "UNAUTHORIZED",
+                "message": "חסר מפתח התחברות"
+              }
+            }
+          }
+        }
+      },
+      "E403": {
+        "description": "אין הרשאה לפעולה (תפקיד לא מתאים או רשומה של משתמשת אחרת)",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "error": {
+                "code": "FORBIDDEN",
+                "message": "אין לך הרשאה לבצע פעולה זו"
+              }
+            }
+          }
+        }
+      },
+      "E404": {
+        "description": "המשאב לא נמצא",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "error": {
+                "code": "NOT_FOUND",
+                "message": "המשאב לא נמצא"
+              }
+            }
+          }
+        }
+      },
+      "E409": {
+        "description": "התנגשות (למשל שיעור חופף או ערך קיים)",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "error": {
+                "code": "LESSON_CONFLICT",
+                "message": "יש התנגשות עם שיעור קיים במערכת"
+              }
+            }
+          }
+        }
+      },
+      "E413": {
+        "description": "קובץ גדול מדי",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "error": {
+                "code": "FILE_TOO_LARGE",
+                "message": "הקובץ גדול מדי (עד 5MB לקובץ)"
+              }
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "example": "VALIDATION_ERROR"
+              },
+              "message": {
+                "type": "string",
+                "example": "הנתונים שנשלחו אינם תקינים"
+              },
+              "details": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                },
+                "description": "פרטים נוספים (לא תמיד קיים)"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "secretary@example.com",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "example": "Password123!"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "sessionKey": {
+            "type": "string",
+            "example": "Zk3v...random-key...",
+            "description": "המפתח לשליחה ב-Authorization: Bearer. ה-JWT עצמו נשמר בשרת בלבד"
+          },
+          "expiresAt": {
+            "type": "string",
+            "example": "2026-10-27T16:00:00.000Z",
+            "format": "date-time"
+          },
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                "format": "uuid"
+              },
+              "fullName": {
+                "type": "string",
+                "example": "מרים לוי"
+              },
+              "email": {
+                "type": "string",
+                "example": "miriam@example.com",
+                "format": "email"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "ADMIN",
+                  "TEACHER",
+                  "STUDENT"
+                ],
+                "example": "STUDENT"
+              },
+              "classId": {
+                "type": "string",
+                "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                "format": "uuid",
+                "nullable": true
+              },
+              "isActive": {
+                "type": "boolean",
+                "example": true
+              },
+              "createdAt": {
+                "type": "string",
+                "example": "2026-09-01T08:00:00.000Z",
+                "format": "date-time"
+              },
+              "class": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                    "format": "uuid"
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "ה1"
+                  },
+                  "grade": {
+                    "type": "string",
+                    "enum": [
+                      "HEH",
+                      "VAV"
+                    ],
+                    "example": "HEH",
+                    "description": "HEH = מחזור ה׳, VAV = מחזור ו׳"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "grade"
+                ],
+                "nullable": true
+              }
+            },
+            "required": [
+              "id",
+              "fullName",
+              "email",
+              "role",
+              "classId",
+              "isActive",
+              "createdAt"
+            ]
+          }
+        },
+        "required": [
+          "sessionKey",
+          "expiresAt",
+          "user"
+        ]
+      },
+      "ChangePasswordRequest": {
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "example": "OldPassword1!"
+          },
+          "newPassword": {
+            "type": "string",
+            "example": "NewPassword2!",
+            "minLength": 8
+          }
+        },
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ]
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string",
+            "example": "מרים לוי"
+          },
+          "email": {
+            "type": "string",
+            "example": "miriam@example.com",
+            "format": "email"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "ADMIN",
+              "TEACHER",
+              "STUDENT"
+            ],
+            "example": "STUDENT"
+          },
+          "classId": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-09-01T08:00:00.000Z",
+            "format": "date-time"
+          },
+          "class": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string",
+                "example": "ה1"
+              },
+              "grade": {
+                "type": "string",
+                "enum": [
+                  "HEH",
+                  "VAV"
+                ],
+                "example": "HEH",
+                "description": "HEH = מחזור ה׳, VAV = מחזור ו׳"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "grade"
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "fullName",
+          "email",
+          "role",
+          "classId",
+          "isActive",
+          "createdAt"
+        ]
+      },
+      "UserList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                  "format": "uuid"
+                },
+                "fullName": {
+                  "type": "string",
+                  "example": "מרים לוי"
+                },
+                "email": {
+                  "type": "string",
+                  "example": "miriam@example.com",
+                  "format": "email"
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "ADMIN",
+                    "TEACHER",
+                    "STUDENT"
+                  ],
+                  "example": "STUDENT"
+                },
+                "classId": {
+                  "type": "string",
+                  "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                  "format": "uuid",
+                  "nullable": true
+                },
+                "isActive": {
+                  "type": "boolean",
+                  "example": true
+                },
+                "createdAt": {
+                  "type": "string",
+                  "example": "2026-09-01T08:00:00.000Z",
+                  "format": "date-time"
+                },
+                "class": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string",
+                      "example": "ה1"
+                    },
+                    "grade": {
+                      "type": "string",
+                      "enum": [
+                        "HEH",
+                        "VAV"
+                      ],
+                      "example": "HEH",
+                      "description": "HEH = מחזור ה׳, VAV = מחזור ו׳"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "grade"
+                  ],
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "fullName",
+                "email",
+                "role",
+                "classId",
+                "isActive",
+                "createdAt"
+              ]
+            }
+          },
+          "total": {
+            "type": "integer",
+            "example": 30
+          },
+          "page": {
+            "type": "integer",
+            "example": 1
+          },
+          "limit": {
+            "type": "integer",
+            "example": 100
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit"
+        ]
+      },
+      "CreateUserRequest": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "string",
+            "example": "מרים לוי"
+          },
+          "email": {
+            "type": "string",
+            "example": "miriam@example.com",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "example": "Password123!",
+            "minLength": 8
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "ADMIN",
+              "TEACHER",
+              "STUDENT"
+            ],
+            "example": "STUDENT"
+          },
+          "classId": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid",
+            "description": "חובה לתלמידה, אסור למורה ולמזכירה"
+          }
+        },
+        "required": [
+          "fullName",
+          "email",
+          "password",
+          "role"
+        ]
+      },
+      "UpdateUserRequest": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "string",
+            "example": "מרים לוי"
+          },
+          "email": {
+            "type": "string",
+            "example": "miriam@example.com",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "example": "NewPassword2!",
+            "minLength": 8,
+            "description": "איפוס סיסמה על ידי המזכירה"
+          },
+          "classId": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid"
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": false
+          }
+        }
+      },
+      "Class": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "ה1"
+          },
+          "grade": {
+            "type": "string",
+            "enum": [
+              "HEH",
+              "VAV"
+            ],
+            "example": "HEH",
+            "description": "HEH = מחזור ה׳, VAV = מחזור ו׳"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "grade"
+        ]
+      },
+      "ClassRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "ה1"
+          },
+          "grade": {
+            "type": "string",
+            "enum": [
+              "HEH",
+              "VAV"
+            ],
+            "example": "HEH",
+            "description": "HEH = מחזור ה׳, VAV = מחזור ו׳"
+          }
+        },
+        "required": [
+          "name",
+          "grade"
+        ]
+      },
+      "Subject": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "מבני נתונים"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "SubjectRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "פיתוח Web"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "Lesson": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid"
+          },
+          "subject": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string",
+                "example": "מבני נתונים"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          },
+          "teacher": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                "format": "uuid"
+              },
+              "fullName": {
+                "type": "string",
+                "example": "רחל כהן"
+              }
+            },
+            "required": [
+              "id",
+              "fullName"
+            ]
+          },
+          "class": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string",
+                "example": "ה1"
+              },
+              "grade": {
+                "type": "string",
+                "enum": [
+                  "HEH",
+                  "VAV"
+                ],
+                "example": "HEH",
+                "description": "HEH = מחזור ה׳, VAV = מחזור ו׳"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "grade"
+            ]
+          },
+          "dayOfWeek": {
+            "type": "integer",
+            "example": 0,
+            "minimum": 0,
+            "maximum": 5,
+            "description": "0 = ראשון ... 5 = שישי"
+          },
+          "startTime": {
+            "type": "string",
+            "example": "09:00",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+          },
+          "endTime": {
+            "type": "string",
+            "example": "10:30"
+          },
+          "room": {
+            "type": "string",
+            "example": "12"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "CANCELLED"
+            ],
+            "example": "ACTIVE"
+          },
+          "changeNote": {
+            "type": "string",
+            "example": "הועבר מיום שני",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "subject",
+          "teacher",
+          "class",
+          "dayOfWeek",
+          "startTime",
+          "endTime",
+          "room",
+          "status",
+          "changeNote"
+        ]
+      },
+      "CreateLessonRequest": {
+        "type": "object",
+        "properties": {
+          "subjectId": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid"
+          },
+          "teacherId": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid"
+          },
+          "classId": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid"
+          },
+          "dayOfWeek": {
+            "type": "integer",
+            "example": 0,
+            "minimum": 0,
+            "maximum": 5,
+            "description": "0 = ראשון ... 5 = שישי"
+          },
+          "startTime": {
+            "type": "string",
+            "example": "09:00",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+          },
+          "endTime": {
+            "type": "string",
+            "example": "10:30"
+          },
+          "room": {
+            "type": "string",
+            "example": "12"
+          },
+          "changeNote": {
+            "type": "string",
+            "example": "הערה אופציונלית"
+          }
+        },
+        "required": [
+          "subjectId",
+          "teacherId",
+          "classId",
+          "dayOfWeek",
+          "startTime",
+          "endTime",
+          "room"
+        ]
+      },
+      "UpdateLessonRequest": {
+        "type": "object",
+        "properties": {
+          "subjectId": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid"
+          },
+          "teacherId": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid"
+          },
+          "classId": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid"
+          },
+          "dayOfWeek": {
+            "type": "integer",
+            "example": 0,
+            "minimum": 0,
+            "maximum": 5,
+            "description": "0 = ראשון ... 5 = שישי"
+          },
+          "startTime": {
+            "type": "string",
+            "example": "09:00",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+          },
+          "endTime": {
+            "type": "string",
+            "example": "10:30"
+          },
+          "room": {
+            "type": "string",
+            "example": "14"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "CANCELLED"
+            ],
+            "example": "ACTIVE"
+          },
+          "changeNote": {
+            "type": "string",
+            "example": "הועבר לחדר 14",
+            "nullable": true
+          }
+        }
+      },
+      "WeekSchedule": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "dayOfWeek": {
+                  "type": "integer",
+                  "example": 0,
+                  "minimum": 0,
+                  "maximum": 5,
+                  "description": "0 = ראשון ... 5 = שישי"
+                },
+                "name": {
+                  "type": "string",
+                  "example": "ראשון"
+                },
+                "lessons": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                        "format": "uuid"
+                      },
+                      "subject": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                            "format": "uuid"
+                          },
+                          "name": {
+                            "type": "string",
+                            "example": "מבני נתונים"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name"
+                        ]
+                      },
+                      "teacher": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                            "format": "uuid"
+                          },
+                          "fullName": {
+                            "type": "string",
+                            "example": "רחל כהן"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "fullName"
+                        ]
+                      },
+                      "class": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                            "format": "uuid"
+                          },
+                          "name": {
+                            "type": "string",
+                            "example": "ה1"
+                          },
+                          "grade": {
+                            "type": "string",
+                            "enum": [
+                              "HEH",
+                              "VAV"
+                            ],
+                            "example": "HEH",
+                            "description": "HEH = מחזור ה׳, VAV = מחזור ו׳"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "grade"
+                        ]
+                      },
+                      "dayOfWeek": {
+                        "type": "integer",
+                        "example": 0,
+                        "minimum": 0,
+                        "maximum": 5,
+                        "description": "0 = ראשון ... 5 = שישי"
+                      },
+                      "startTime": {
+                        "type": "string",
+                        "example": "09:00",
+                        "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+                      },
+                      "endTime": {
+                        "type": "string",
+                        "example": "10:30"
+                      },
+                      "room": {
+                        "type": "string",
+                        "example": "12"
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "ACTIVE",
+                          "CANCELLED"
+                        ],
+                        "example": "ACTIVE"
+                      },
+                      "changeNote": {
+                        "type": "string",
+                        "example": "הועבר מיום שני",
+                        "nullable": true
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "subject",
+                      "teacher",
+                      "class",
+                      "dayOfWeek",
+                      "startTime",
+                      "endTime",
+                      "room",
+                      "status",
+                      "changeNote"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "dayOfWeek",
+                "name",
+                "lessons"
+              ]
+            }
+          }
+        },
+        "required": [
+          "days"
+        ]
+      },
+      "DaySchedule": {
+        "type": "object",
+        "properties": {
+          "dayOfWeek": {
+            "type": "integer",
+            "example": 0,
+            "minimum": 0,
+            "maximum": 5,
+            "description": "0 = ראשון ... 5 = שישי"
+          },
+          "name": {
+            "type": "string",
+            "example": "ראשון"
+          },
+          "lessons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                  "format": "uuid"
+                },
+                "subject": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string",
+                      "example": "מבני נתונים"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name"
+                  ]
+                },
+                "teacher": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                      "format": "uuid"
+                    },
+                    "fullName": {
+                      "type": "string",
+                      "example": "רחל כהן"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "fullName"
+                  ]
+                },
+                "class": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string",
+                      "example": "ה1"
+                    },
+                    "grade": {
+                      "type": "string",
+                      "enum": [
+                        "HEH",
+                        "VAV"
+                      ],
+                      "example": "HEH",
+                      "description": "HEH = מחזור ה׳, VAV = מחזור ו׳"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "grade"
+                  ]
+                },
+                "dayOfWeek": {
+                  "type": "integer",
+                  "example": 0,
+                  "minimum": 0,
+                  "maximum": 5,
+                  "description": "0 = ראשון ... 5 = שישי"
+                },
+                "startTime": {
+                  "type": "string",
+                  "example": "09:00",
+                  "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+                },
+                "endTime": {
+                  "type": "string",
+                  "example": "10:30"
+                },
+                "room": {
+                  "type": "string",
+                  "example": "12"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "ACTIVE",
+                    "CANCELLED"
+                  ],
+                  "example": "ACTIVE"
+                },
+                "changeNote": {
+                  "type": "string",
+                  "example": "הועבר מיום שני",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "subject",
+                "teacher",
+                "class",
+                "dayOfWeek",
+                "startTime",
+                "endTime",
+                "room",
+                "status",
+                "changeNote"
+              ]
+            }
+          }
+        },
+        "required": [
+          "dayOfWeek",
+          "name",
+          "lessons"
+        ]
+      },
+      "Note": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid"
+          },
+          "content": {
+            "type": "string",
+            "example": "לחזור על הרקורסיה לפני המבחן"
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-10-27T08:00:00.000Z",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-10-27T08:00:00.000Z",
+            "format": "date-time"
+          },
+          "lesson": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                "format": "uuid"
+              },
+              "subject": {
+                "type": "string",
+                "example": "מבני נתונים"
+              },
+              "class": {
+                "type": "string",
+                "example": "ה1"
+              },
+              "dayOfWeek": {
+                "type": "integer",
+                "example": 0,
+                "minimum": 0,
+                "maximum": 5,
+                "description": "0 = ראשון ... 5 = שישי"
+              },
+              "startTime": {
+                "type": "string",
+                "example": "09:00",
+                "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+              }
+            },
+            "required": [
+              "id",
+              "subject",
+              "class",
+              "dayOfWeek",
+              "startTime"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "content",
+          "createdAt",
+          "updatedAt",
+          "lesson"
+        ]
+      },
+      "NoteRequest": {
+        "type": "object",
+        "properties": {
+          "lessonId": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid"
+          },
+          "content": {
+            "type": "string",
+            "example": "לחזור על הרקורסיה לפני המבחן"
+          }
+        },
+        "required": [
+          "lessonId",
+          "content"
+        ]
+      },
+      "NoteUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "example": "לחזור על הרקורסיה ועל עצים"
+          }
+        },
+        "required": [
+          "content"
+        ]
+      },
+      "Homework": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "example": "תרגיל 3 - מערכים"
+          },
+          "description": {
+            "type": "string",
+            "example": "פתרי את שאלות 1-5 בעמוד 42 והעלי את הקבצים."
+          },
+          "lessonDate": {
+            "type": "string",
+            "example": "2026-10-26",
+            "format": "date"
+          },
+          "dueDate": {
+            "type": "string",
+            "example": "2026-10-30",
+            "format": "date"
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-10-26T08:00:00.000Z",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                "format": "uuid"
+              },
+              "fullName": {
+                "type": "string",
+                "example": "רחל כהן"
+              }
+            },
+            "required": [
+              "id",
+              "fullName"
+            ]
+          },
+          "lesson": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                "format": "uuid"
+              },
+              "subject": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                    "format": "uuid"
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "מבני נתונים"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name"
+                ]
+              },
+              "class": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                    "format": "uuid"
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "ה1"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name"
+                ]
+              },
+              "dayOfWeek": {
+                "type": "integer",
+                "example": 0,
+                "minimum": 0,
+                "maximum": 5,
+                "description": "0 = ראשון ... 5 = שישי"
+              },
+              "startTime": {
+                "type": "string",
+                "example": "09:00",
+                "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+              },
+              "endTime": {
+                "type": "string",
+                "example": "10:30"
+              },
+              "room": {
+                "type": "string",
+                "example": "12"
+              }
+            },
+            "required": [
+              "id",
+              "subject",
+              "class",
+              "dayOfWeek",
+              "startTime",
+              "endTime",
+              "room"
+            ]
+          },
+          "mySubmission": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                "format": "uuid"
+              },
+              "submittedAt": {
+                "type": "string",
+                "example": "2026-10-27T10:00:00.000Z",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "submittedAt"
+            ],
+            "nullable": true,
+            "description": "מוחזר לתלמידה בלבד. null אם עוד לא הוגש"
+          },
+          "submissionsCount": {
+            "type": "integer",
+            "example": 12,
+            "description": "מוחזר למורה בלבד"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "lessonDate",
+          "dueDate",
+          "createdAt",
+          "createdBy",
+          "lesson"
+        ]
+      },
+      "CreateHomeworkRequest": {
+        "type": "object",
+        "properties": {
+          "lessonId": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "example": "תרגיל 3 - מערכים"
+          },
+          "description": {
+            "type": "string",
+            "example": "פתרי את שאלות 1-5 בעמוד 42 והעלי את הקבצים."
+          },
+          "dueDate": {
+            "type": "string",
+            "example": "2026-10-30",
+            "format": "date"
+          }
+        },
+        "required": [
+          "lessonId",
+          "title",
+          "description",
+          "dueDate"
+        ]
+      },
+      "UpdateHomeworkRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "תרגיל 3 - מערכים"
+          },
+          "description": {
+            "type": "string",
+            "example": "הסבר מעודכן"
+          },
+          "dueDate": {
+            "type": "string",
+            "example": "2026-10-31",
+            "format": "date"
+          }
+        }
+      },
+      "SubmissionUploadRequest": {
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "properties": {
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "binary"
+            },
+            "description": "עד 5 קבצים, עד 5MB כל אחד"
+          },
+          "comment": {
+            "type": "string",
+            "example": "לא הצלחתי את שאלה 5",
+            "description": "הערה אופציונלית"
+          }
+        }
+      },
+      "SubmissionFile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid"
+          },
+          "fileName": {
+            "type": "string",
+            "example": "exercise1.zip"
+          },
+          "mimeType": {
+            "type": "string",
+            "example": "application/zip"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "example": 20480
+          }
+        },
+        "required": [
+          "id",
+          "fileName",
+          "mimeType",
+          "sizeBytes"
+        ]
+      },
+      "Submission": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid"
+          },
+          "comment": {
+            "type": "string",
+            "example": "לא הצלחתי את שאלה 5",
+            "nullable": true
+          },
+          "submittedAt": {
+            "type": "string",
+            "example": "2026-10-27T10:00:00.000Z",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-10-27T10:00:00.000Z",
+            "format": "date-time"
+          },
+          "isLate": {
+            "type": "boolean",
+            "example": false
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                  "format": "uuid"
+                },
+                "fileName": {
+                  "type": "string",
+                  "example": "exercise1.zip"
+                },
+                "mimeType": {
+                  "type": "string",
+                  "example": "application/zip"
+                },
+                "sizeBytes": {
+                  "type": "integer",
+                  "example": 20480
+                }
+              },
+              "required": [
+                "id",
+                "fileName",
+                "mimeType",
+                "sizeBytes"
+              ]
+            }
+          },
+          "student": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                "format": "uuid"
+              },
+              "fullName": {
+                "type": "string",
+                "example": "מרים לוי"
+              },
+              "class": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                    "format": "uuid"
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "ה1"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name"
+                ],
+                "nullable": true
+              }
+            },
+            "required": [
+              "id",
+              "fullName",
+              "class"
+            ]
+          },
+          "homework": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                "format": "uuid"
+              },
+              "title": {
+                "type": "string",
+                "example": "תרגיל 3 - מערכים"
+              },
+              "dueDate": {
+                "type": "string",
+                "example": "2026-10-30",
+                "format": "date"
+              },
+              "lesson": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                    "format": "uuid"
+                  },
+                  "subject": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                        "format": "uuid"
+                      },
+                      "name": {
+                        "type": "string",
+                        "example": "מבני נתונים"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name"
+                    ]
+                  },
+                  "class": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                        "format": "uuid"
+                      },
+                      "name": {
+                        "type": "string",
+                        "example": "ה1"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "subject",
+                  "class"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "dueDate",
+              "lesson"
+            ]
+          },
+          "feedback": {
+            "type": "object",
+            "properties": {
+              "content": {
+                "type": "string",
+                "example": "עבודה טובה, כדאי לשפר את שמות המשתנים."
+              },
+              "createdAt": {
+                "type": "string",
+                "example": "2026-10-28T09:00:00.000Z",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "example": "2026-10-28T09:00:00.000Z",
+                "format": "date-time"
+              },
+              "teacher": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                    "format": "uuid"
+                  },
+                  "fullName": {
+                    "type": "string",
+                    "example": "רחל כהן"
+                  }
+                },
+                "required": [
+                  "id",
+                  "fullName"
+                ]
+              }
+            },
+            "required": [
+              "content",
+              "createdAt",
+              "updatedAt",
+              "teacher"
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "comment",
+          "submittedAt",
+          "updatedAt",
+          "isLate",
+          "files",
+          "student",
+          "homework",
+          "feedback"
+        ]
+      },
+      "Feedback": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "example": "עבודה טובה, כדאי לשפר את שמות המשתנים."
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-10-28T09:00:00.000Z",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-10-28T09:00:00.000Z",
+            "format": "date-time"
+          },
+          "teacher": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                "format": "uuid"
+              },
+              "fullName": {
+                "type": "string",
+                "example": "רחל כהן"
+              }
+            },
+            "required": [
+              "id",
+              "fullName"
+            ]
+          }
+        },
+        "required": [
+          "content",
+          "createdAt",
+          "updatedAt",
+          "teacher"
+        ]
+      },
+      "FeedbackRequest": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "example": "עבודה טובה, כדאי לשפר את שמות המשתנים."
+          }
+        },
+        "required": [
+          "content"
+        ]
+      },
+      "Notification": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "LESSON_CHANGED",
+              "ANNOUNCEMENT",
+              "HOMEWORK_ADDED",
+              "FEEDBACK_ADDED",
+              "MESSAGE"
+            ],
+            "example": "LESSON_CHANGED"
+          },
+          "title": {
+            "type": "string",
+            "example": "שיעור בוטל"
+          },
+          "body": {
+            "type": "string",
+            "example": "מבני נתונים (ה1): השיעור בוטל"
+          },
+          "lessonId": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid",
+            "nullable": true
+          },
+          "announcementId": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid",
+            "nullable": true
+          },
+          "isRead": {
+            "type": "boolean",
+            "example": false
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-10-27T07:00:00.000Z",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "type",
+          "title",
+          "body",
+          "isRead",
+          "createdAt"
+        ]
+      },
+      "NotificationList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                  "format": "uuid"
+                },
+                "userId": {
+                  "type": "string",
+                  "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                  "format": "uuid"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "LESSON_CHANGED",
+                    "ANNOUNCEMENT",
+                    "HOMEWORK_ADDED",
+                    "FEEDBACK_ADDED",
+                    "MESSAGE"
+                  ],
+                  "example": "LESSON_CHANGED"
+                },
+                "title": {
+                  "type": "string",
+                  "example": "שיעור בוטל"
+                },
+                "body": {
+                  "type": "string",
+                  "example": "מבני נתונים (ה1): השיעור בוטל"
+                },
+                "lessonId": {
+                  "type": "string",
+                  "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                  "format": "uuid",
+                  "nullable": true
+                },
+                "announcementId": {
+                  "type": "string",
+                  "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                  "format": "uuid",
+                  "nullable": true
+                },
+                "isRead": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "createdAt": {
+                  "type": "string",
+                  "example": "2026-10-27T07:00:00.000Z",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "userId",
+                "type",
+                "title",
+                "body",
+                "isRead",
+                "createdAt"
+              ]
+            }
+          },
+          "unreadCount": {
+            "type": "integer",
+            "example": 3
+          }
+        },
+        "required": [
+          "items",
+          "unreadCount"
+        ]
+      },
+      "MarkAllReadResponse": {
+        "type": "object",
+        "properties": {
+          "updated": {
+            "type": "integer",
+            "example": 3
+          }
+        },
+        "required": [
+          "updated"
+        ]
+      },
+      "Announcement": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid"
+          },
+          "audience": {
+            "type": "string",
+            "enum": [
+              "ALL_STUDENTS",
+              "ALL_TEACHERS",
+              "GRADE",
+              "CLASS"
+            ],
+            "example": "CLASS"
+          },
+          "grade": {
+            "type": "string",
+            "enum": [
+              "HEH",
+              "VAV"
+            ],
+            "example": "HEH",
+            "description": "HEH = מחזור ה׳, VAV = מחזור ו׳",
+            "nullable": true
+          },
+          "classId": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "example": "שינוי בלוח המבחנים"
+          },
+          "body": {
+            "type": "string",
+            "example": "המבחן ביום רביעי נדחה ליום חמישי."
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-10-27T07:00:00.000Z",
+            "format": "date-time"
+          },
+          "sender": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                "format": "uuid"
+              },
+              "fullName": {
+                "type": "string",
+                "example": "שרה המזכירה"
+              }
+            },
+            "required": [
+              "id",
+              "fullName"
+            ]
+          },
+          "recipientCount": {
+            "type": "integer",
+            "example": 25,
+            "description": "מוחזר למזכירה בלבד"
+          }
+        },
+        "required": [
+          "id",
+          "audience",
+          "title",
+          "body",
+          "createdAt"
+        ]
+      },
+      "CreateAnnouncementRequest": {
+        "type": "object",
+        "properties": {
+          "audience": {
+            "type": "string",
+            "enum": [
+              "ALL_STUDENTS",
+              "ALL_TEACHERS",
+              "GRADE",
+              "CLASS"
+            ],
+            "example": "CLASS"
+          },
+          "grade": {
+            "type": "string",
+            "enum": [
+              "HEH",
+              "VAV"
+            ],
+            "example": "HEH",
+            "description": "חובה כש-audience הוא GRADE"
+          },
+          "classId": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid",
+            "description": "חובה כש-audience הוא CLASS"
+          },
+          "title": {
+            "type": "string",
+            "example": "שינוי בלוח המבחנים"
+          },
+          "body": {
+            "type": "string",
+            "example": "המבחן ביום רביעי נדחה ליום חמישי."
+          }
+        },
+        "required": [
+          "audience",
+          "title",
+          "body"
+        ]
+      },
+      "ThreadMessage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid"
+          },
+          "body": {
+            "type": "string",
+            "example": "שלום, אפשר להחליף חדר ביום שלישי?"
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-10-27T08:00:00.000Z",
+            "format": "date-time"
+          },
+          "readAt": {
+            "type": "string",
+            "example": "2026-10-27T08:05:00.000Z",
+            "format": "date-time",
+            "nullable": true
+          },
+          "sender": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                "format": "uuid"
+              },
+              "fullName": {
+                "type": "string",
+                "example": "רחל כהן"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "ADMIN",
+                  "TEACHER",
+                  "STUDENT"
+                ],
+                "example": "STUDENT"
+              }
+            },
+            "required": [
+              "id",
+              "fullName",
+              "role"
+            ]
+          },
+          "isMine": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "id",
+          "body",
+          "createdAt",
+          "readAt",
+          "sender",
+          "isMine"
+        ]
+      },
+      "ThreadMessageRequest": {
+        "type": "object",
+        "properties": {
+          "teacherId": {
+            "type": "string",
+            "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+            "format": "uuid",
+            "description": "חובה כשהמזכירה שולחת. מורה לא שולחת שדה זה"
+          },
+          "body": {
+            "type": "string",
+            "example": "שלום, אפשר להחליף חדר ביום שלישי?"
+          }
+        },
+        "required": [
+          "body"
+        ]
+      },
+      "ThreadSummary": {
+        "type": "object",
+        "properties": {
+          "teacher": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                "format": "uuid"
+              },
+              "fullName": {
+                "type": "string",
+                "example": "רחל כהן"
+              }
+            },
+            "required": [
+              "id",
+              "fullName"
+            ]
+          },
+          "lastMessage": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "string",
+                "example": "תודה רבה"
+              },
+              "createdAt": {
+                "type": "string",
+                "example": "2026-10-27T08:00:00.000Z",
+                "format": "date-time"
+              },
+              "senderId": {
+                "type": "string",
+                "example": "3f1c2b64-8a53-4d1b-9a47-0c2f6e8d1a11",
+                "format": "uuid"
+              }
+            },
+            "required": [
+              "body",
+              "createdAt",
+              "senderId"
+            ]
+          },
+          "unreadCount": {
+            "type": "integer",
+            "example": 2
+          }
+        },
+        "required": [
+          "teacher",
+          "lastMessage",
+          "unreadCount"
+        ]
+      },
+      "Health": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
+          },
+          "database": {
+            "type": "string",
+            "example": "up"
+          },
+          "time": {
+            "type": "string",
+            "example": "2026-10-27T08:00:00.000Z",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "status",
+          "database",
+          "time"
+        ]
+      }
+    }
+  }
+}

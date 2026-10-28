@@ -1,0 +1,292 @@
+// סכמת מסד הנתונים של מערכת סנכרון לוח הזמנים בסמינר
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+// מחזור: ה׳ או ו׳
+enum Grade {
+  HEH
+  VAV
+}
+
+enum LessonStatus {
+  ACTIVE
+  CANCELLED
+}
+
+enum NotificationType {
+  LESSON_CHANGED
+  ANNOUNCEMENT
+  HOMEWORK_ADDED
+  FEEDBACK_ADDED
+  MESSAGE
+}
+
+enum AnnouncementAudience {
+  ALL_STUDENTS
+  ALL_TEACHERS
+  GRADE
+  CLASS
+}
+
+// סמינר: מרחב נתונים מבודד. כל מזכירה שנרשמת מקבלת סמינר ריק משלה
+model Seminar {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+
+  users    User[]
+  classes  Class[]
+  subjects Subject[]
+
+  @@map("seminars")
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  seminarId    String   @db.Uuid
+  fullName     String
+  email        String   @unique
+  passwordHash String
+  role         Role
+  classId      String?  @db.Uuid
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  seminar          Seminar          @relation(fields: [seminarId], references: [id], onDelete: Cascade)
+  class            Class?           @relation(fields: [classId], references: [id], onDelete: Restrict)
+  lessonsTaught    Lesson[]         @relation("TeacherLessons")
+  notes            Note[]
+  homeworks        Homework[]
+  submissions      Submission[]
+  feedbacksGiven   Feedback[]
+  sessions         Session[]
+  notifications    Notification[]
+  announcements    Announcement[]
+  threadMessages   TeacherMessage[] @relation("ThreadOwner")
+  sentMessages     TeacherMessage[] @relation("MessageSender")
+
+  @@index([role])
+  @@index([classId])
+  @@index([seminarId])
+  @@map("users")
+}
+
+model Class {
+  id        String   @id @default(uuid()) @db.Uuid
+  seminarId String   @db.Uuid
+  name      String
+  grade     Grade
+  createdAt DateTime @default(now())
+
+  seminar       Seminar        @relation(fields: [seminarId], references: [id], onDelete: Cascade)
+  students      User[]
+  lessons       Lesson[]
+  announcements Announcement[]
+
+  @@unique([seminarId, name])
+  @@map("classes")
+}
+
+model Subject {
+  id        String   @id @default(uuid()) @db.Uuid
+  seminarId String   @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+
+  seminar Seminar  @relation(fields: [seminarId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
+
+  @@unique([seminarId, name])
+  @@map("subjects")
+}
+
+model Lesson {
+  id         String       @id @default(uuid()) @db.Uuid
+  subjectId  String       @db.Uuid
+  teacherId  String       @db.Uuid
+  classId    String       @db.Uuid
+  // 0 = ראשון ... 5 = שישי
+  dayOfWeek  Int
+  startTime  String       // HH:mm
+  endTime    String       // HH:mm
+  room       String
+  status     LessonStatus @default(ACTIVE)
+  changeNote String?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  subject   Subject    @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  teacher   User       @relation("TeacherLessons", fields: [teacherId], references: [id], onDelete: Restrict)
+  class     Class      @relation(fields: [classId], references: [id], onDelete: Restrict)
+  notes     Note[]
+  homeworks Homework[]
+
+  @@index([classId, dayOfWeek])
+  @@index([teacherId, dayOfWeek])
+  @@index([room, dayOfWeek])
+  @@map("lessons")
+}
+
+// הערה אישית על שיעור. רק הכותבת רואה אותה (מורה או תלמידה)
+model Note {
+  id        String   @id @default(uuid()) @db.Uuid
+  authorId  String   @db.Uuid
+  lessonId  String   @db.Uuid
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([authorId, lessonId])
+  @@map("notes")
+}
+
+model Homework {
+  id          String   @id @default(uuid()) @db.Uuid
+  lessonId    String   @db.Uuid
+  createdById String   @db.Uuid
+  title       String
+  description String
+  lessonDate  DateTime @db.Date
+  dueDate     DateTime @db.Date
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  lesson      Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  createdBy   User         @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  submissions Submission[]
+
+  @@index([lessonId])
+  @@map("homeworks")
+}
+
+model Submission {
+  id          String   @id @default(uuid()) @db.Uuid
+  homeworkId  String   @db.Uuid
+  studentId   String   @db.Uuid
+  comment     String?
+  submittedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  homework Homework         @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  student  User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  files    SubmissionFile[]
+  feedback Feedback?
+
+  @@unique([homeworkId, studentId])
+  @@index([studentId])
+  @@map("submissions")
+}
+
+model SubmissionFile {
+  id           String   @id @default(uuid()) @db.Uuid
+  submissionId String   @db.Uuid
+  fileName     String
+  mimeType     String
+  sizeBytes    Int
+  data         Bytes
+  createdAt    DateTime @default(now())
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+  @@map("submission_files")
+}
+
+model Feedback {
+  id           String   @id @default(uuid()) @db.Uuid
+  submissionId String   @unique @db.Uuid
+  teacherId    String   @db.Uuid
+  content      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  teacher    User       @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+
+  @@map("feedbacks")
+}
+
+// ה-JWT נשמר כאן בצד השרת. הדפדפן מקבל רק מפתח אקראי (שרק ה-hash שלו נשמר)
+model Session {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  keyHash   String    @unique
+  jwt       String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model Announcement {
+  id        String               @id @default(uuid()) @db.Uuid
+  senderId  String               @db.Uuid
+  audience  AnnouncementAudience
+  grade     Grade?
+  classId   String?              @db.Uuid
+  title     String
+  body      String
+  createdAt DateTime             @default(now())
+
+  sender        User           @relation(fields: [senderId], references: [id], onDelete: Restrict)
+  class         Class?         @relation(fields: [classId], references: [id], onDelete: SetNull)
+  notifications Notification[]
+
+  @@map("announcements")
+}
+
+model Notification {
+  id             String           @id @default(uuid()) @db.Uuid
+  userId         String           @db.Uuid
+  type           NotificationType
+  title          String
+  body           String
+  lessonId       String?          @db.Uuid
+  announcementId String?          @db.Uuid
+  isRead         Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  announcement Announcement? @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt])
+  @@map("notifications")
+}
+
+// שיחה בין מורה למזכירה. teacherId הוא הבעלים של השיחה
+model TeacherMessage {
+  id        String    @id @default(uuid()) @db.Uuid
+  teacherId String    @db.Uuid
+  senderId  String    @db.Uuid
+  body      String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  teacher User @relation("ThreadOwner", fields: [teacherId], references: [id], onDelete: Cascade)
+  sender  User @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId, createdAt])
+  @@map("teacher_messages")
+}
